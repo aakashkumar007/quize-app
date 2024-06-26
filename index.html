@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Application</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f7fafc; }
+  </style>
+</head>
+<body class="bg-gray-100">
+
+  <div id="app" class="min-h-screen flex flex-col">
+    <header class="bg-blue-600 text-white p-4">
+      <h1 class="text-2xl">Quiz Application</h1>
+    </header>
+    <main class="flex-grow p-4">
+      <!-- Content will be injected here -->
+    </main>
+    <footer class="bg-blue-600 text-white p-4 text-center">
+      <p>© 2023 Quiz Application</p>
+    </footer>
+  </div>
+
+  <script>
+    const app = document.getElementById('app');
+    const main = document.querySelector('main');
+
+    let quizzes = JSON.parse(localStorage.getItem('quizzes')) || [];
+
+    function renderCreateQuiz() {
+      main.innerHTML = `
+        <div class="p-4">
+          <h2 class="text-2xl mb-4">Create a New Quiz</h2>
+          <input id="quizTitle" type="text" placeholder="Quiz Title" class="mb-4 p-2 border w-full" />
+          <div id="questionsContainer" class="mb-4">
+            <div class="mb-4">
+              <input type="text" placeholder="Question" class="question mb-2 p-2 border w-full" />
+              <input type="text" placeholder="Option 1" class="option mb-2 p-2 border w-full" />
+              <input type="text" placeholder="Option 2" class="option mb-2 p-2 border w-full" />
+              <input type="text" placeholder="Option 3" class="option mb-2 p-2 border w-full" />
+              <input type="text" placeholder="Option 4" class="option mb-2 p-2 border w-full" />
+              <input type="text" placeholder="Correct Answer" class="correct-answer mb-2 p-2 border w-full" />
+            </div>
+          </div>
+          <button id="addQuestion" class="bg-green-500 text-white px-4 py-2">Add Question</button>
+          <button id="createQuiz" class="bg-blue-500 text-white px-4 py-2">Create Quiz</button>
+        </div>
+      `;
+
+      document.getElementById('addQuestion').addEventListener('click', addQuestion);
+      document.getElementById('createQuiz').addEventListener('click', createQuiz);
+    }
+
+    function addQuestion() {
+      const questionsContainer = document.getElementById('questionsContainer');
+      const questionHtml = `
+        <div class="mb-4">
+          <input type="text" placeholder="Question" class="question mb-2 p-2 border w-full" />
+          <input type="text" placeholder="Option 1" class="option mb-2 p-2 border w-full" />
+          <input type="text" placeholder="Option 2" class="option mb-2 p-2 border w-full" />
+          <input type="text" placeholder="Option 3" class="option mb-2 p-2 border w-full" />
+          <input type="text" placeholder="Option 4" class="option mb-2 p-2 border w-full" />
+          <input type="text" placeholder="Correct Answer" class="correct-answer mb-2 p-2 border w-full" />
+        </div>
+      `;
+      questionsContainer.insertAdjacentHTML('beforeend', questionHtml);
+    }
+
+    function createQuiz() {
+      const quizTitle = document.getElementById('quizTitle').value;
+      const questionsElements = document.querySelectorAll('#questionsContainer > div');
+      const questions = Array.from(questionsElements).map(questionElement => {
+        const question = questionElement.querySelector('.question').value;
+        const options = Array.from(questionElement.querySelectorAll('.option')).map(option => option.value);
+        const correctAnswer = questionElement.querySelector('.correct-answer').value;
+        return { question, options, correctAnswer };
+      });
+
+      quizzes.push({ title: quizTitle, questions });
+      localStorage.setItem('quizzes', JSON.stringify(quizzes));
+      renderQuizList();
+    }
+
+    function renderQuizList() {
+      main.innerHTML = `
+        <div class="p-4">
+          <button id="createNewQuiz" class="bg-blue-500 text-white px-4 py-2 mb-4">Create New Quiz</button>
+          <h2 class="text-2xl mb-4">Available Quizzes</h2>
+          <div id="quizList">
+            ${quizzes.map((quiz, index) => `
+              <button class="quiz-item bg-blue-500 text-white px-4 py-2 my-2 block" data-index="${index}">${quiz.title}</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      document.getElementById('createNewQuiz').addEventListener('click', renderCreateQuiz);
+      document.querySelectorAll('.quiz-item').forEach(button => {
+        button.addEventListener('click', event => {
+          const index = event.target.getAttribute('data-index');
+          renderTakeQuiz(index);
+        });
+      });
+    }
+
+    function renderTakeQuiz(index) {
+      const quiz = quizzes[index];
+      let currentQuestionIndex = 0;
+      let score = 0;
+
+      function showQuestion() {
+        const question = quiz.questions[currentQuestionIndex];
+        main.innerHTML = `
+          <div class="p-4">
+            <h2 class="text-2xl mb-4">${quiz.title}</h2>
+            <p class="mb-4">${question.question}</p>
+            <div>
+              ${question.options.map((option, i) => `
+                <label class="block">
+                  <input type="radio" name="option" value="${option}" class="mr-2" />
+                  ${option}
+                </label>
+              `).join('')}
+            </div>
+            <button id="nextQuestion" class="bg-blue-500 text-white px-4 py-2 mt-4">Next</button>
+          </div>
+        `;
+
+        document.getElementById('nextQuestion').addEventListener('click', () => {
+          const selectedOption = document.querySelector('input[name="option"]:checked').value;
+          if (selectedOption === question.correctAnswer) {
+            score++;
+          }
+          currentQuestionIndex++;
+          if (currentQuestionIndex < quiz.questions.length) {
+            showQuestion();
+          } else {
+            const scores = JSON.parse(localStorage.getItem('scores')) || {};
+            scores[quiz.title] = scores[quiz.title] || [];
+            scores[quiz.title].push(score);
+            localStorage.setItem('scores', JSON.stringify(scores));
+
+            main.innerHTML = `
+              <div class="p-4">
+                <p>Quiz Completed! Your score: ${score}</p>
+                <p>Highest Score: ${Math.max(...scores[quiz.title])}</p>
+                <p>Average Score: ${(scores[quiz.title].reduce((a, b) => a + b, 0) / scores[quiz.title].length).toFixed(2)}</p>
+                <button id="backToQuizList" class="bg-blue-500 text-white px-4 py-2 mt-4">Back to Quiz List</button>
+              </div>
+            `;
+            document.getElementById('backToQuizList').addEventListener('click', renderQuizList);
+          }
+        });
+      }
+
+      showQuestion();
+    }
+
+    renderQuizList();
+  </script>
+
+</body>
+</html>
